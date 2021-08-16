@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	
+	"net/http"
 	"github.com/jochasinga/requests"
-	//"os"
 )
 
 var (
@@ -34,11 +33,11 @@ func (userInfo User) print() {
 
 // A file
 type File struct {
-	URL string `json:"url"`
-	ShortName string `json:"shortName"`
+	URL              string `json:"url"`
+	ShortName        string `json:"shortName"`
 	OriginalFileName string `json:"originalName"`
-	Mime string `json:"mimeType"`
-	Size int64 `json:"size"`
+	Mime             string `json:"mimeType"`
+	Size             int64  `json:"size"`
 }
 
 func (file File) print() {
@@ -100,15 +99,57 @@ func getFiles() []File {
 
 // Print out the files
 func printFiles(files []File) {
-	for _, file := range(files) {
+	for _, file := range files {
+		// use the File struct print function
 		file.print()
 	}
 }
 
+// delete a file based on it's original file name
+func delete(originalName string) {
+	auth := func(r *requests.Request) {
+		r.Header.Add("Authorization", "Bearer "+os.Getenv("DOGGO_TOKEN"))
+	}
+
+	files := getFiles()
+
+	for _, file := range files {
+		if file.OriginalFileName == originalName {
+			shortName := file.ShortName
+
+			url := baseURL + "file/" + shortName
+
+			_, err := requests.Delete(url, auth)
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println(originalName, "deleted!")
+			return
+		}
+	}
+	fmt.Println(originalName, "not found :(")
+}
+
+// deleteAll dies what ut says on the tin, it deletes all the files
+func deleteAll() {
+	files := getFiles()
+
+	for _, file := range(files) {
+		fmt.Println("Deleting", file.OriginalFileName, "....")
+		delete(file.OriginalFileName)
+	}
+
+	fmt.Println("Mass delete finished")
+}
+
+
+
 func main() {
 	// user := getUser()
 	// printUser(user)
+	// delete("MillionaireProject.zip")
 
-	files := getFiles()
-	printFiles(files)
+	// files := getFiles()
+	// printFiles(files)
 }
