@@ -3,8 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/jochasinga/requests"
 )
 
@@ -31,7 +37,7 @@ func (userInfo User) print() {
 	}
 }
 
-// A file
+// A File is a struct for file information
 type File struct {
 	URL              string `json:"url"`
 	ShortName        string `json:"shortName"`
@@ -45,6 +51,12 @@ func (file File) print() {
 	fmt.Println("\t URL:  " + file.URL)
 	fmt.Println("\t Size: " + ByteCountSI(file.Size))
 
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
 }
 
 // ByteCountSI creates a human readable byte rep
@@ -135,7 +147,7 @@ func delete(originalName string) {
 func deleteAll() {
 	files := getFiles()
 
-	for _, file := range(files) {
+	for _, file := range files {
 		fmt.Println("Deleting", file.OriginalFileName, "....")
 		delete(file.OriginalFileName)
 	}
@@ -143,13 +155,60 @@ func deleteAll() {
 	fmt.Println("Mass delete finished")
 }
 
+func uploadFilePOST(url string, filename string) (string, []byte) {
 
+	client := &http.Client{}
+	data, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req, err := http.NewRequest("POST", url, data)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//auth
+	req.Header.Add("Authorization", "Bearer "+os.Getenv("DOGGO_TOKEN"))
+
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return resp.Status, content
+}
+
+func parseMtype(mtype string) string {
+	return strings.Replace(strings.Split(mtype, ";")[0], "/", "%2F", 1)
+}
+
+// uploadFile uploads a file at the given path
+func uploadFile(path string) {
+	file := filepath.Base(path)
+
+	mtype, err := mimetype.DetectFile(path)
+	check(err)
+	mimeType := parseMtype(mtype.String())
+	fmt.Println(mimeType)
+
+	stat, resp := uploadFilePOST("https://pat.doggo.ninja/v1/upload?mimeType="+mimeType+"&originalName="+file, path)
+
+	fmt.Println(stat)
+	fmt.Println(string(resp))
+}
 
 func main() {
-	// user := getUser()
-	// printUser(user)
+	//user := getUser()
+	//user.print()
 	// delete("MillionaireProject.zip")
 
-	// files := getFiles()
-	// printFiles(files)
+	//files := getFiles()
+	//printFiles(files)
+	uploadFile("growl.go")
 }
