@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docopt/docopt-go"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/jochasinga/requests"
 )
@@ -44,6 +45,11 @@ type File struct {
 	OriginalFileName string `json:"originalName"`
 	Mime             string `json:"mimeType"`
 	Size             int64  `json:"size"`
+}
+
+type uploadResponse struct {
+	URL  string `json:"url"`
+	Size uint64 `json:"size"`
 }
 
 func (file File) print() {
@@ -172,7 +178,6 @@ func uploadFilePOST(url string, filename string) (string, []byte) {
 
 	req.Header.Set("Content-Type", "application/octet-stream")
 
-
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
@@ -195,12 +200,15 @@ func uploadFile(path string) {
 	mtype, err := mimetype.DetectFile(path)
 	check(err)
 	mimeType := parseMtype(mtype.String())
-	fmt.Println(mimeType)
 
-	stat, resp := uploadFilePOST("https://pat.doggo.ninja/v1/upload?mimeType="+mimeType+"&originalName="+file, path)
+	_, resp := uploadFilePOST("https://pat.doggo.ninja/v1/upload?mimeType="+mimeType+"&originalName="+file, path)
 
-	fmt.Println(stat)
-	fmt.Println(string(resp))
+	var respStruct uploadResponse
+
+	json.Unmarshal(resp, &respStruct)
+
+	fmt.Println("New URL:", respStruct.URL)
+	fmt.Println("Size:   ", ByteCountSI(int64(respStruct.Size)))
 }
 
 func main() {
@@ -210,5 +218,34 @@ func main() {
 
 	//files := getFiles()
 	//printFiles(files)
-	uploadFile("growl.go")
+
+	usage := `DOGGO.NINJA CLI
+	Usage:
+		growl
+		growl ls
+		growl user
+		growl upload [-d | --dir] <path>
+		growl delete [--all] [<originalName>]
+		growl -v
+	Options:
+		<path>  Optional path argument.
+		<originalName>  The original name of the file to be manipulated.`
+
+	// uploadFile("growl.go")
+
+	opts, _ := docopt.ParseArgs(usage, os.Args[1:], "1.0.0")
+	path, _ := opts.String("<path>")
+	originalName, _ := opts.String("<originalName>")
+
+	if opts["upload"] == true {
+		println("Uploading", path, "...")
+		uploadFile(path)
+	} else if opts["user"] == true {
+		getUser().print()
+	} else if opts["ls"] == true {
+		printFiles(getFiles())
+	} else if opts["delete"] == true {
+		fmt.Println("Deleting", originalName)
+		delete(originalName)
+	}
 }
