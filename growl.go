@@ -161,6 +161,7 @@ func deleteAll() {
 	fmt.Println("Mass delete finished")
 }
 
+// This uploadFilePOST handles some dark magic of file uploads
 func uploadFilePOST(url string, filename string) (string, []byte) {
 
 	client := &http.Client{}
@@ -175,7 +176,7 @@ func uploadFilePOST(url string, filename string) (string, []byte) {
 
 	//auth
 	req.Header.Add("Authorization", "Bearer "+os.Getenv("DOGGO_TOKEN"))
-
+	// Why kog
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := client.Do(req)
@@ -189,6 +190,7 @@ func uploadFilePOST(url string, filename string) (string, []byte) {
 	return resp.Status, content
 }
 
+// parseMtype takes the mtype and does string sorcery to make it url friendly
 func parseMtype(mtype string) string {
 	return strings.Replace(strings.Split(mtype, ";")[0], "/", "%2F", 1)
 }
